@@ -1,6 +1,32 @@
+"""
+Taken from https://github.com/openai/weightnorm/blob/master/keras/weightnorm.py; unmodified apart from this notice
+
+
+MIT License
+
+Copyright (c) [year] [fullname]
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software
+and associated documentation files (the "Software"), to deal in the Software without restriction,
+including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense,
+and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so,
+subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all copies or substantial portions
+ of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
+INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+"""
+
 from keras import backend as K
-from keras.optimizers import SGD,Adam
+from keras.optimizers import SGD, Adam
 import tensorflow as tf
+
 
 # adapted from keras.optimizers.SGD
 class SGDWithWeightnorm(SGD):
@@ -11,7 +37,7 @@ class SGDWithWeightnorm(SGD):
         lr = self.lr
         if self.initial_decay > 0:
             lr *= (1. / (1. + self.decay * self.iterations))
-            self.updates .append(K.update_add(self.iterations, 1))
+            self.updates.append(K.update_add(self.iterations, 1))
 
         # momentum
         shapes = [K.get_variable_shape(p) for p in params]
@@ -54,7 +80,7 @@ class SGDWithWeightnorm(SGD):
                 # wn param updates --> W updates
                 add_weightnorm_param_updates(self.updates, new_V_param, new_g_param, p, V_scaler)
 
-            else: # normal SGD with momentum
+            else:  # normal SGD with momentum
                 v = self.momentum * m - lr * g  # velocity
                 self.updates.append(K.update(m, v))
 
@@ -70,6 +96,7 @@ class SGDWithWeightnorm(SGD):
 
                 self.updates.append(K.update(p, new_p))
         return self.updates
+
 
 # adapted from keras.optimizers.Adam
 class AdamWithWeightnorm(Adam):
@@ -94,7 +121,7 @@ class AdamWithWeightnorm(Adam):
             # if a weight tensor (len > 1) use weight normalized parameterization
             # this is the only part changed w.r.t. keras.optimizers.Adam
             ps = K.get_variable_shape(p)
-            if len(ps)>1:
+            if len(ps) > 1:
 
                 # get weight normalization parameters
                 V, V_norm, V_scaler, g_param, grad_g, grad_V = get_weightnorm_params_and_grads(p, g)
@@ -126,7 +153,7 @@ class AdamWithWeightnorm(Adam):
                 # wn param updates --> W updates
                 add_weightnorm_param_updates(self.updates, new_V_param, new_g_param, p, V_scaler)
 
-            else: # do optimization normally
+            else:  # do optimization normally
                 m_t = (self.beta_1 * m) + (1. - self.beta_1) * g
                 v_t = (self.beta_2 * v) + (1. - self.beta_2) * K.square(g)
                 p_t = p - lr_t * m_t / (K.sqrt(v_t) + self.epsilon)
@@ -180,12 +207,11 @@ def add_weightnorm_param_updates(updates, new_V_param, new_g_param, W, V_scaler)
 
 # data based initialization for a given Keras model
 def data_based_init(model, input):
-
     # input can be dict, numpy array, or list of numpy arrays
     if type(input) is dict:
         feed_dict = input
     elif type(input) is list:
-        feed_dict = {tf_inp: np_inp for tf_inp,np_inp in zip(model.inputs,input)}
+        feed_dict = {tf_inp: np_inp for tf_inp, np_inp in zip(model.inputs, input)}
     else:
         feed_dict = {model.inputs[0]: input}
 
@@ -197,14 +223,15 @@ def data_based_init(model, input):
     layer_output_weight_bias = []
     for l in model.layers:
         if hasattr(l, 'W') and hasattr(l, 'b'):
-            assert(l.built)
-            layer_output_weight_bias.append( (l.name,l.get_output_at(0),l.W,l.b) ) # if more than one node, only use the first
+            assert (l.built)
+            layer_output_weight_bias.append(
+                (l.name, l.get_output_at(0), l.W, l.b))  # if more than one node, only use the first
 
     # iterate over our list and do data dependent init
     sess = K.get_session()
-    for l,o,W,b in layer_output_weight_bias:
+    for l, o, W, b in layer_output_weight_bias:
         print('Performing data dependent initialization for layer ' + l)
-        m,v = tf.nn.moments(o, [i for i in range(len(o.get_shape())-1)])
+        m, v = tf.nn.moments(o, [i for i in range(len(o.get_shape()) - 1)])
         s = tf.sqrt(v + 1e-10)
-        updates = tf.group(W.assign(W/tf.reshape(s,[1]*(len(W.get_shape())-1)+[-1])), b.assign((b-m)/s))
+        updates = tf.group(W.assign(W / tf.reshape(s, [1] * (len(W.get_shape()) - 1) + [-1])), b.assign((b - m) / s))
         sess.run(updates, feed_dict)
