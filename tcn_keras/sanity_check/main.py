@@ -5,7 +5,7 @@ Input consists of n random values in [0,1]
 Value to predict is the next value in the sequence
 
 With no knowledge of future data points the optimal solution is to always predict 0.5,
-leading to a MAE of 0.25 (1/4) and MSE of 0.0625 (1/16)
+leading to a MAE of 0.25 (1/4) and MSE of 0.0833 (1/12)
 
 Any better score indicates future data points are leaking in the network.
 Changing the Temporal Block's second Convolutional layer's padding to `same`
@@ -66,7 +66,7 @@ if __name__ == '__main__':
     kernel_size = 7
     levels = 8
     lr = 4e-3
-    loss = 'mse'
+    loss = 'mae'
     units = 30
     clip = -1.0 # Clipping not implemented (yet)
 
