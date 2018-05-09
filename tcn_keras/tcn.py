@@ -42,12 +42,13 @@ def build_tcn(input_dim, num_channels, kernel_size=2, dropout=2, input_steps=400
     :param num_channels: Number of channels (filters) in each Convolutional layer
     :param kernel_size:  Convolutional kernel size
     :param dropout:      Dropout rate applied after each convolution
-    :param input_steps:  Number of time steps per input
+    :param input_steps:  Number of time steps per input. Ignored if 1, removing 1 dimension from the input
     :return: Input and output layers of the TCN
     """
     layers = []
     num_levels = len(num_channels)
-    inputs = Input(shape=(input_steps,input_dim))
+    input_shape = (input_steps, input_dim) if input_steps is not None and input_steps > 1 else (1,input_dim)
+    inputs = Input(shape=input_shape)
     x = inputs
     for i in range(num_levels):
         dilation_size = 2 ** i
