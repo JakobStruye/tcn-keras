@@ -35,21 +35,6 @@ def build_data(size, input_steps):
     X = np.reshape(X, (size, input_steps, 2))
     return X, Y
 
-def build_sanity_check_data(size, input_steps):
-    """
-    Builds the data for a sanity check (predicting next value in a random sequence)
-    :param size:        Total number of samples
-    :param input_steps: Time steps per sample
-    :return:
-    """
-    X = np.random.rand(size,input_steps, 1)
-    # Y's time steps are X's time steps right-shifted by one
-    # The shift is cyclical, so the final value in a Y sample is the first in its corresponding X sample
-    # and therefore predictable. As long as input_steps is high enough this shouldn't have a drastic effect
-    # on overall accuracy
-    Y = np.roll(X,-1, axis=1)
-
-    return X, Y
 
 def build_model(input_dim, input_steps, kernel_size, levels, units, lr, dropout, loss='mse'):
     channel_sizes = [units] * levels
